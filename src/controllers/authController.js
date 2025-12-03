@@ -208,10 +208,8 @@ exports.googleCallback = async (req, res) => {
   try {
     // req.user is set by passport.authenticate
     if (!req.user) {
-      return res.status(401).json({
-        status: "fail",
-        message: "Google authentication failed",
-      });
+      // Redirect to login page with error
+      return res.redirect('http://localhost:3000/login?error=auth_failed');
     }
 
     // Create tokens for the user
@@ -220,14 +218,48 @@ exports.googleCallback = async (req, res) => {
       role: req.user.role || "user",
     };
 
-    // Send tokens back
-    await createSendTokens({ entity: req.user, res, payload });
+    // Create tokens
+    const accessToken = signJwt(payload);
+    const refreshTokenRaw = signRefreshToken(payload);
+
+    // Store hashed refresh token in DB
+    const hashed = hashToken(refreshTokenRaw);
+    const expiresAt = new Date(
+      Date.now() + parseDuration(process.env.JWT_REFRESH_EXPIRES_IN || "7d"),
+    );
+
+    req.user.refreshTokens = req.user.refreshTokens || [];
+    req.user.refreshTokens.push({
+      token: hashed,
+      createdAt: Date.now(),
+      expiresAt,
+    });
+
+    await req.user.save({ validateBeforeSave: false });
+
+    // Set httpOnly cookies
+    res.cookie("refreshToken", refreshTokenRaw, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: parseDuration(process.env.JWT_REFRESH_EXPIRES_IN || "7d"),
+    });
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: parseDuration(process.env.JWT_EXPIRES_IN || "15m"),
+    });
+
+    // Redirect to frontend dashboard based on role
+    const frontendURL = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const redirectPath = req.user.role === 'business' ? '/business' : '/user';
+    
+    res.redirect(`${frontendURL}${redirectPath}`);
   } catch (err) {
     console.error("Google callback error:", err);
-    res.status(500).json({
-      status: "error",
-      message: err.message,
-    });
+    res.redirect('http://localhost:3000/login?error=server_error');
   }
 };
 
