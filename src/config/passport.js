@@ -29,7 +29,8 @@ if (clientID && clientSecret) {
               name: profile.displayName,
               email: profile.emails[0].value,
               googleId: profile.id,
-              provider: "google",
+              authProvider: "google",
+              isEmailVerified: true, // Google emails are pre-verified
             });
           }
 
