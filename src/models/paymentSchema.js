@@ -1,17 +1,20 @@
 const mongoose = require('mongoose');
 
 const paymentSchema = mongoose.Schema({
-    clinicId: {
+    businessId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Clinic'
+        ref: 'Business',
+        required: true
     },
     ticketId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Ticket'
+        ref: 'Ticket',
+        required: true
     },
     userId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'User',
+        required: true
     },
     amount: {
         type: Number,
@@ -19,15 +22,44 @@ const paymentSchema = mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ['cash', 'credit-card', 'wallet'],
+        enum: ['cash', 'card', 'credit-card', 'wallet', 'mobile'],
         required: true
     },
     transactionId: {
         type: String,
+        required: true,
+        unique: true
     },
     status: {
         type: String,
-        enum: ['succeeded', 'failed', 'refunded'],
+        enum: ['pending', 'completed', 'succeeded', 'failed', 'refunded'],
+        default: 'pending'
+    },
+    // Stripe integration fields
+    stripePaymentIntentId: {
+        type: String,
+        sparse: true
+    },
+    stripeRefundId: {
+        type: String
+    },
+    // Refund details
+    refundAmount: {
+        type: Number
+    },
+    refundReason: {
+        type: String
+    },
+    refundDate: {
+        type: Date
+    },
+    paidAt: {
+        type: Date
+    },
+    // Additional metadata
+    metadata: {
+        type: Map,
+        of: String
     }
 },{timestamps: true})
 

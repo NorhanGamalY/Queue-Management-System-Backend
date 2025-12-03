@@ -1,0 +1,2457 @@
+{
+	"info": {
+		"_postman_id": "0110eed1-df87-4609-a028-c12ab21bc53e",
+		"name": "Queue Management System API",
+		"description": "Complete API collection for Smart Queue Management System",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "41403865"
+	},
+	"item": [
+		{
+			"name": "👤 Users",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.token) {",
+									"    pm.collectionVariables.set('token', jsonData.data.token);",
+									"    pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+									"    pm.collectionVariables.set('userId', jsonData.data.user._id);",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test27@example.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User (Me)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmU4NWRjOWI1OTk4NTQ0NTA1MmZhNSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY0NjU2NjE3LCJleHAiOjE3NjUyNjE0MTd9.eCBOPeuGYf8U4VfEq65981XRMEjSbbZ7NqTRlRBXPXs",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/logout",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/refresh-token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"refresh-token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmU4NWRjOWI1OTk4NTQ0NTA1MmZhNSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY0NjU2NjYyLCJleHAiOjE3NjUyNjE0NjJ9.pU-qV4lgw4jj6rI9Wt6gi4QkdNRlGNqSoWmYDZYS_vI",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test227@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/forgot-password/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"forgot-password",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"password\": \"MyNewStrongPassword123\"\n\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/reset-password/261d59c1aa751724d0a59d97432e38b03c3265fcaeabe48eab4e9aae2bee9e75",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"reset-password",
+								"261d59c1aa751724d0a59d97432e38b03c3265fcaeabe48eab4e9aae2bee9e75"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmU4NWRjOWI1OTk4NTQ0NTA1MmZhNSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc2NDY3NjA4NSwiZXhwIjoxNzY1MjgwODg1fQ.hHTFafH5G1e62A1WhKhI5uj_X4uDalPNgxVT5awiZMg",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"currentPassword\": \"MyNewStrongPassword123\",\n  \"newPassword\": \"newpassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/update-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"update-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"5553ab42f4f9d25465bf70ebae066d7f3d9470707ed6de613a25a86fe8a2bfb3\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/verify-email",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"verify-email"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Resend Verification",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmU4NWRjOWI1OTk4NTQ0NTA1MmZhNSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY0NjU3NzM5LCJleHAiOjE3NjUyNjI1Mzl9.3Conj8Bkbd07T1QlJwJqw3C8-SctnVQK9Oqj9PujNts",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test27@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/resend-verification",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"resend-verification"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test 99User\",\n  \"email\": \"test227@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"012347567890\",\n  \"type\": \"customer\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Profile",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmU4NWRjOWI1OTk4NTQ0NTA1MmZhNSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc2NDY3NjEyOSwiZXhwIjoxNzY1MjgwOTI5fQ.EgHIUFES3-yjIhB2OZvOdC4dRA-3lCNWs7aKG-3TsR0",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update My Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmU4NWRjOWI1OTk4NTQ0NTA1MmZhNSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc2NDY3NjEyOSwiZXhwIjoxNzY1MjgwOTI5fQ.EgHIUFES3-yjIhB2OZvOdC4dRA-3lCNWs7aKG-3TsR0",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"01111111111\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete My Account",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmU4NWRjOWI1OTk4NTQ0NTA1MmZhNSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc2NDY3NjEyOSwiZXhwIjoxNzY1MjgwOTI5fQ.EgHIUFES3-yjIhB2OZvOdC4dRA-3lCNWs7aKG-3TsR0",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🏢 Business",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.token) {",
+									"    pm.collectionVariables.set('token', jsonData.data.token);",
+									"    pm.collectionVariables.set('refreshToken', jsonData.data.refreshToken);",
+									"    pm.collectionVariables.set('userId', jsonData.data.user._id);",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"clinic2123@example.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Business",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data._id) {",
+									"    pm.collectionVariables.set('businessId', jsonData.data._id);",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test Clinic\",\n  \"email\": \"clinic2123@example.com\",\n  \"password\": \"password123\",\n  \"mobilePhone\": \"01234567890\",\n  \"landlinePhone\": \"12345678\",\n  \"address\": \"123 Main Street, City\",\n  \"specialization\": \"General Medicine\",\n  \"workingHours\": [\n    {\n      \"days\": \"sunday\",\n      \"openTime\": \"09:00\",\n      \"closeTime\": \"17:00\",\n      \"isClosed\": false\n    },\n    {\n      \"days\": \"monday\",\n      \"openTime\": \"09:00\",\n      \"closeTime\": \"17:00\",\n      \"isClosed\": false\n    }\n  ],\n  \"service\": [\n    {\n      \"name\": \"General Checkup\",\n      \"description\": \"Complete health checkup\",\n      \"price\": 100,\n      \"duration\": 30\n    }\n  ],\n  \"paymentMethod\":\"cash\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/businesses/business",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"businesses",
+								"business"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Businesses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/businesses/business",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"businesses",
+								"business"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Business by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/businesses/business/{{businessId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"businesses",
+								"business",
+								"{{businessId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Business",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmVkM2U5NGQyNzYwNWM1ZDkxYjcyMyIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY0Njc2NjAxLCJleHAiOjE3NjUyODE0MDF9.shbICbPoWkWNIy3Eknmbu5Cx_ODkmzoqCiGVJu-AdQs",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "{{baseUrl}}/businesses/business/{{businessId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"businesses",
+								"business",
+								"{{businessId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Business",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmVkNTAzM2FiMmMwODA5ODYzYzM3OCIsInJvbGUiOiJidXNpbmVzcyIsImlhdCI6MTc2NDY3NzkxNiwiZXhwIjoxNzY1MjgyNzE2fQ.6eFxAjP6ud6K0oe5u3MeD1QKH4GcNEElWY4bQwrepN8",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/businesses/business/{{businessId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"businesses",
+								"business",
+								"{{businessId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User (Me)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmU4NWRjOWI1OTk4NTQ0NTA1MmZhNSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY0NjU2NjE3LCJleHAiOjE3NjUyNjE0MTd9.eCBOPeuGYf8U4VfEq65981XRMEjSbbZ7NqTRlRBXPXs",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/logout",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/refresh-token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"refresh-token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmU4NWRjOWI1OTk4NTQ0NTA1MmZhNSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY0NjU2NjYyLCJleHAiOjE3NjUyNjE0NjJ9.pU-qV4lgw4jj6rI9Wt6gi4QkdNRlGNqSoWmYDZYS_vI",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test8@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/forgot-password/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"forgot-password",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"password\": \"MyNewStrongPassword123\"\n\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/reset-password/468de75147571f352904672adb33d29ee9a5363d63ffb0a2648c5a54d09cd5a9",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"reset-password",
+								"468de75147571f352904672adb33d29ee9a5363d63ffb0a2648c5a54d09cd5a9"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmU4NWRjOWI1OTk4NTQ0NTA1MmZhNSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc2NDY3NjA4NSwiZXhwIjoxNzY1MjgwODg1fQ.hHTFafH5G1e62A1WhKhI5uj_X4uDalPNgxVT5awiZMg",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"currentPassword\": \"MyNewStrongPassword123\",\n  \"newPassword\": \"newpassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/update-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"update-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"5553ab42f4f9d25465bf70ebae066d7f3d9470707ed6de613a25a86fe8a2bfb3\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/verify-email",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"verify-email"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Resend Verification",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmU4NWRjOWI1OTk4NTQ0NTA1MmZhNSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY0NjU3NzM5LCJleHAiOjE3NjUyNjI1Mzl9.3Conj8Bkbd07T1QlJwJqw3C8-SctnVQK9Oqj9PujNts",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test27@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/resend-verification",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"resend-verification"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📋 Queue",
+			"item": [
+				{
+					"name": "Create Queue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data._id) {",
+									"    pm.collectionVariables.set('queueId', jsonData.data._id);",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmVkZDEwNDgyYzlmNjNhMGYyMjUzMSIsInJvbGUiOiJidXNpbmVzcyIsImlhdCI6MTc2NDY3ODkzMiwiZXhwIjoxNzY1MjgzNzMyfQ.rbzGZyLJIKgHC2tlUliFAKVGo64PbK0Xk3x3r5A4IkU",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"maxCapacity\": 50,\n  \"date\": \"2025-12-02\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/queues/business/{{businessId}}/queue",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"queues",
+								"business",
+								"{{businessId}}",
+								"queue"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Pause Queue",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmVkZDEwNDgyYzlmNjNhMGYyMjUzMSIsInJvbGUiOiJidXNpbmVzcyIsImlhdCI6MTc2NDY3ODkzMiwiZXhwIjoxNzY1MjgzNzMyfQ.rbzGZyLJIKgHC2tlUliFAKVGo64PbK0Xk3x3r5A4IkU",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/queues/queue/{{queueId}}/pause",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"queues",
+								"queue",
+								"{{queueId}}",
+								"pause"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Resume Queue",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmVkZDEwNDgyYzlmNjNhMGYyMjUzMSIsInJvbGUiOiJidXNpbmVzcyIsImlhdCI6MTc2NDY3ODkzMiwiZXhwIjoxNzY1MjgzNzMyfQ.rbzGZyLJIKgHC2tlUliFAKVGo64PbK0Xk3x3r5A4IkU",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/queues/queue/{{queueId}}/resume",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"queues",
+								"queue",
+								"{{queueId}}",
+								"resume"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Close Queue",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmVkZDEwNDgyYzlmNjNhMGYyMjUzMSIsInJvbGUiOiJidXNpbmVzcyIsImlhdCI6MTc2NDY3ODkzMiwiZXhwIjoxNzY1MjgzNzMyfQ.rbzGZyLJIKgHC2tlUliFAKVGo64PbK0Xk3x3r5A4IkU",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/queues/queue/{{queueId}}/close",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"queues",
+								"queue",
+								"{{queueId}}",
+								"close"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Queue",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmVkZDEwNDgyYzlmNjNhMGYyMjUzMSIsInJvbGUiOiJidXNpbmVzcyIsImlhdCI6MTc2NDY3ODkzMiwiZXhwIjoxNzY1MjgzNzMyfQ.rbzGZyLJIKgHC2tlUliFAKVGo64PbK0Xk3x3r5A4IkU",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/queues/queues/{{queueId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"queues",
+								"queues",
+								"{{queueId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🎫 Tickets",
+			"item": [
+				{
+					"name": "Create Ticket (Book Appointment)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data._id) {",
+									"    pm.collectionVariables.set('ticketId', jsonData.data._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"businessId\": \"{{businessId}}\",\n  \"queueId\": \"{{queueId}}\",\n  \"type\": \"examination\",\n  \"priority\": \"normal\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tickets/tickets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"tickets"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Tickets (Admin/Staff)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmVkZDEwNDgyYzlmNjNhMGYyMjUzMSIsInJvbGUiOiJidXNpbmVzcyIsImlhdCI6MTc2NDY4NzQ0MywiZXhwIjoxNzY1MjkyMjQzfQ.zLHArLZgKOJbQSATDzyoPUafqU4TIY_dYf4HGPIbKQw",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/tickets?status=waiting&page=1&limit=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"tickets"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "waiting"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Tickets",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmVkMWIzZDNjOWYxYWIzZDA1NTBjMCIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY0Njg2ODEyLCJleHAiOjE3NjUyOTE2MTJ9.zmS2w7v4OcJ3kVClXitkGTbQy3Lt5QVDgFMq4ejZ3zM",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/users/me/tickets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"users",
+								"me",
+								"tickets"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Business Tickets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/businesses/{{businessId}}/tickets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"businesses",
+								"{{businessId}}",
+								"tickets"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Ticket by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/tickets/{{ticketId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"tickets",
+								"{{ticketId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Call Ticket (Staff)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/tickets/{{ticketId}}/call",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"tickets",
+								"{{ticketId}}",
+								"call"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Serve Ticket (Staff)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/tickets/{{ticketId}}/serve",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"tickets",
+								"{{ticketId}}",
+								"serve"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Start Ticket (Staff)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/tickets/{{ticketId}}/start",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"tickets",
+								"{{ticketId}}",
+								"start"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Ticket (Staff)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/tickets/{{ticketId}}/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"tickets",
+								"{{ticketId}}",
+								"complete"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Mark No-Show (Staff)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/tickets/tickets/{{ticketId}}/no-show",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"tickets",
+								"{{ticketId}}",
+								"no-show"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Ticket",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Cannot attend appointment\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tickets/tickets/{{ticketId}}/cancel",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tickets",
+								"tickets",
+								"{{ticketId}}",
+								"cancel"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "⭐ Reviews",
+			"item": [
+				{
+					"name": "Create Review",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData._id) {",
+									"    pm.collectionVariables.set('reviewId', jsonData._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"businessId\": \"{{businessId}}\",\n  \"ticketId\": \"{{ticketId}}\",\n  \"rating\": 5,\n  \"comment\": \"Excellent service! Very professional and quick.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/reviews/reviews",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reviews",
+								"reviews"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Reviews",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reviews/reviews?page=1&limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reviews",
+								"reviews"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Review by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reviews/reviews/{{reviewId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reviews",
+								"reviews",
+								"{{reviewId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Business Reviews",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reviews/businesses/{{businessId}}/reviews",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reviews",
+								"businesses",
+								"{{businessId}}",
+								"reviews"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Reviews",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/reviews/users/me/reviews",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reviews",
+								"users",
+								"me",
+								"reviews"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Review",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rating\": 4,\n  \"comment\": \"Updated review - Good service\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/reviews/reviews/{{reviewId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reviews",
+								"reviews",
+								"{{reviewId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Review",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/reviews/reviews/{{reviewId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"reviews",
+								"reviews",
+								"{{reviewId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔔 Notifications",
+			"item": [
+				{
+					"name": "Get My Notifications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Notifications (Alt)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/notifications",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								"notifications"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete All My Notifications",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Notification by ID",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/me/{{notificationId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								"me",
+								"{{notificationId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👑 Admin",
+			"item": [
+				{
+					"name": "Get Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/admin/dashboard",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"admin",
+								"dashboard"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/admin/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"admin",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Businesses",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/admin/businesses",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"admin",
+								"businesses"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/admin/users/{{userId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"admin",
+								"users",
+								"{{userId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated by Admin\",\n  \"type\": \"staff\",\n  \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/admin/users/{{userId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"admin",
+								"users",
+								"{{userId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/admin/users/{{userId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"admin",
+								"admin",
+								"users",
+								"{{userId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔍 Search",
+			"item": [
+				{
+					"name": "Global Search",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/search?q=clinic",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "clinic"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Businesses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/search/businesses?q=clinic&page=1&limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"search",
+								"businesses"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "clinic"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Services",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/search/services?q=checkup",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"search",
+								"services"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "checkup"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Suggestions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/search/suggestions?q=cli",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"search",
+								"suggestions"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "cli"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter Businesses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/search/filter/businesses?specialization=General Medicine&minRating=4",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"search",
+								"filter",
+								"businesses"
+							],
+							"query": [
+								{
+									"key": "specialization",
+									"value": "General Medicine"
+								},
+								{
+									"key": "minRating",
+									"value": "4"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📊 Stats",
+			"item": [
+				{
+					"name": "Get Business Stats",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MmVkZDEwNDgyYzlmNjNhMGYyMjUzMSIsInJvbGUiOiJidXNpbmVzcyIsImlhdCI6MTc2NDY3ODkzMiwiZXhwIjoxNzY1MjgzNzMyfQ.rbzGZyLJIKgHC2tlUliFAKVGo64PbK0Xk3x3r5A4IkU",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/stats/business/{{businessId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"stats",
+								"business",
+								"{{businessId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Admin Overview",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/stats/admin/overview",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"stats",
+								"admin",
+								"overview"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Live Queue Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/stats/queue/{{queueId}}/live",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"stats",
+								"queue",
+								"{{queueId}}",
+								"live"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "💳 Payments",
+			"item": [
+				{
+					"name": "Create Payment (Cash)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.data && jsonData.data.payment && jsonData.data.payment._id) {",
+									"    pm.collectionVariables.set('paymentId', jsonData.data.payment._id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ticketId\": \"{{ticketId}}\",\n  \"amount\": 100,\n  \"paymentMethod\": \"cash\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/payments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"payments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Payment (Card/Stripe)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ticketId\": \"{{ticketId}}\",\n  \"amount\": 100,\n  \"paymentMethod\": \"card\",\n  \"paymentMethodId\": \"pm_card_visa\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/payments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"payments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Payment by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/payments/{{paymentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"payments",
+								"{{paymentId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Payments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/payments/users/me/payments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"payments",
+								"users",
+								"me",
+								"payments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Business Payments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/payments/businesses/{{businessId}}/payments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"payments",
+								"businesses",
+								"{{businessId}}",
+								"payments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Payments (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/payments/all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"payments",
+								"all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refund Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Customer requested refund\",\n  \"amount\": 100\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/payments/{{paymentId}}/refund",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"payments",
+								"{{paymentId}}",
+								"refund"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Payment Receipt",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/payments/{{paymentId}}/receipt",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"payments",
+								"{{paymentId}}",
+								"receipt"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"paymentId\": \"{{paymentId}}\",\n  \"transactionId\": \"TXN-123456\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/payments/verify",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"payments",
+								"verify"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000/api/v1"
+		},
+		{
+			"key": "token",
+			"value": ""
+		},
+		{
+			"key": "refreshToken",
+			"value": ""
+		},
+		{
+			"key": "userId",
+			"value": ""
+		},
+		{
+			"key": "businessId",
+			"value": ""
+		},
+		{
+			"key": "queueId",
+			"value": ""
+		},
+		{
+			"key": "ticketId",
+			"value": ""
+		},
+		{
+			"key": "paymentId",
+			"value": ""
+		},
+		{
+			"key": "reviewId",
+			"value": ""
+		}
+	]
+}
