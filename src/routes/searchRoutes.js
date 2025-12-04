@@ -14,6 +14,9 @@ router.get("/services", searchController.searchServices);
 // Get search suggestions
 router.get("/suggestions", searchController.getSuggestions);
 
+// Semantic search using AI embeddings
+router.get("/semantic", searchController.semanticSearchBusinesses);
+
 // Advanced business filtering
 router.get("/filter/businesses", searchController.filterBusinesses);
 

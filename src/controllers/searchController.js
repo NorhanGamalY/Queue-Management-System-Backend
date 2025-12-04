@@ -1,4 +1,8 @@
 const Business = require("../models/businessSchema");
+const {
+  generateEmbedding,
+  findSimilar,
+} = require("../utils/embeddingService");
 
 // -------------------------
 // GET /api/v1/search
@@ -378,6 +382,92 @@ exports.filterBusinesses = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error filtering businesses",
+    });
+  }
+};
+
+// -------------------------
+// GET /api/v1/search/semantic
+// Semantic search using AI embeddings
+// -------------------------
+exports.semanticSearchBusinesses = async (req, res) => {
+  try {
+    const {
+      q,
+      location,
+      rating,
+      priceRange,
+      businessType,
+      category,
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    if (!q || q.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Search query is required",
+      });
+    }
+
+    // Generate embedding for search query
+    const queryEmbedding = await generateEmbedding(q.trim());
+
+    if (!queryEmbedding) {
+      // Fallback to keyword search if embedding fails
+      console.warn("Embedding generation failed, falling back to keyword search");
+      return exports.searchBusinesses(req, res);
+    }
+
+    // Fetch all businesses (with filters if provided)
+    const query = {};
+    
+    if (businessType) query.businessType = businessType;
+    if (category) query.category = new RegExp(category, "i");
+    if (location) {
+      query.$or = [
+        { "address": new RegExp(location, "i") },
+      ];
+    }
+    if (rating) query.rating = { $gte: Number(rating) };
+
+    const allBusinesses = await Business.find(query).select("-password -__v");
+
+    // Find similar businesses using embeddings
+    const similarBusinesses = findSimilar(
+      queryEmbedding,
+      allBusinesses,
+      Number(limit) * 3 // Get more results for pagination
+    );
+
+    // Pagination
+    const skip = (page - 1) * limit;
+    const paginatedResults = similarBusinesses.slice(skip, skip + Number(limit));
+
+    // Format results
+    const results = paginatedResults.map((result) => ({
+      ...result.business.toObject(),
+      relevanceScore: result.similarity,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        businesses: results,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total: similarBusinesses.length,
+          pages: Math.ceil(similarBusinesses.length / limit),
+        },
+        searchType: "semantic",
+      },
+    });
+  } catch (error) {
+    console.error("Semantic search error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error performing semantic search",
     });
   }
 };

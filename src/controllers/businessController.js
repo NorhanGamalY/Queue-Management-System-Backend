@@ -1,4 +1,5 @@
 const Business = require("../models/businessSchema");
+const { generateBusinessEmbeddings } = require("../utils/embeddingService");
 
 // -------------------------
 // POST /api/v1/businesses
@@ -8,6 +9,18 @@ exports.createBusiness = async (req, res) => {
     const businessData = req.body;
 
     const newBusiness = await Business.create(businessData);
+
+    // Generate embeddings asynchronously (don't block response)
+    generateBusinessEmbeddings(newBusiness)
+      .then(async (embeddings) => {
+        if (embeddings && Object.keys(embeddings).length > 0) {
+          await Business.findByIdAndUpdate(newBusiness._id, embeddings);
+          console.log(`Embeddings generated for business: ${newBusiness.name}`);
+        }
+      })
+      .catch((err) => {
+        console.error('Error generating embeddings:', err);
+      });
 
     const safeBusiness = await Business.findById(newBusiness._id).select(
       "-password",
@@ -87,6 +100,23 @@ exports.updateBusinessById = async (req, res) => {
         status: "fail",
         message: "Business not found",
       });
+    }
+
+    // Regenerate embeddings if relevant fields changed
+    const relevantFields = ['name', 'specialization', 'service'];
+    const hasRelevantChanges = relevantFields.some(field => req.body[field]);
+    
+    if (hasRelevantChanges) {
+      generateBusinessEmbeddings(updatedBusiness)
+        .then(async (embeddings) => {
+          if (embeddings && Object.keys(embeddings).length > 0) {
+            await Business.findByIdAndUpdate(id, embeddings);
+            console.log(`Embeddings updated for business: ${updatedBusiness.name}`);
+          }
+        })
+        .catch((err) => {
+          console.error('Error updating embeddings:', err);
+        });
     }
 
     res.status(200).json({
