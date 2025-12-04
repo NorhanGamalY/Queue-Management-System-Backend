@@ -534,6 +534,11 @@ exports.resetPassword = async (req, res) => {
       });
     }
 
+
+    res.status(200).json({
+      status: "success",
+      message: "OTP is valid",
+    });
     // Update password and clear reset fields
     user.password = password;
     user.passwordResetToken = undefined;

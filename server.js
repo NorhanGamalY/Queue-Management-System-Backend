@@ -101,8 +101,7 @@ app.use("/api/v1/stats", statsRoutes);
 // -----------------------------
 // START SERVER
 // -----------------------------
-const port = process.env.PORT || 3000;
-
+const port = process.env.PORT || 3001;
 server.listen(port, () => {
   console.log(`🚀 Server running on --> http://localhost:${port}`);
   console.log(`📡 Socket.IO enabled for real-time updates`);

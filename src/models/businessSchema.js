@@ -93,6 +93,12 @@ const businessSchema = new mongoose.Schema(
       enum: ["cash", "credit-card", "wallet"],
       required: true,
     },
+
+    // AI Embeddings for semantic search
+    nameEmbedding: [Number],
+    servicesEmbedding: [Number],
+    specializationEmbedding: [Number],
+    combinedEmbedding: [Number],
   },
   { timestamps: true },
 );
