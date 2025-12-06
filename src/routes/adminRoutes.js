@@ -51,4 +51,29 @@ router.delete(
   adminController.deleteUserById,
 );
 
+//Get business by ID (admin only)
+router.get(
+  "/admin/businesses/:id",
+  protect,
+  restrictTo("admin"),
+  adminController.getBusinessById,
+);
+
+//Update business by ID (admin only)
+router.put(
+  "/admin/businesses/:id",
+  protect,
+  restrictTo("admin"),
+  adminController.updateBusinessById,
+);
+
+//Delete business by ID (admin only)
+router.delete(
+  "/admin/businesses/:id",
+  protect,
+  restrictTo("admin"),
+  adminController.deleteBusinessById,
+);
+
 module.exports = router;
+
