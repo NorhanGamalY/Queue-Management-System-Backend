@@ -31,12 +31,12 @@ router.get(
 // Get current user's tickets
 router.get("/users/me/tickets", protect, ticketController.getMyTickets);
 
-// Get tickets for business/clinic (owner/staff only)
+// Get tickets for business/clinic (owner/staff/business only)
 // GET /api/clinics/:id/tickets (Documentation compatible)
 router.get(
   "/businesses/:businessId/tickets",
   protect,
-  restrictTo("owner", "staff"),
+  restrictTo("owner", "staff", "business"),
   ticketController.getBusinessTickets,
 );
 router.get(
@@ -53,15 +53,15 @@ router.patch("/tickets/:id/cancel", protect, ticketController.cancelTicket);
 
 // Call ticket (staff only) - Documentation: PUT /api/tickets/:id/call
 router.patch(
-  "/tickets/:id/call",
+  "/tickets/:id/cancel",
   protect,
-  restrictTo("staff", "owner"),
-  ticketController.callTicket,
+  restrictTo("staff", "owner", "business"),
+  ticketController.cancelTicket,
 );
 router.put(
   "/tickets/:id/call",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("staff", "owner", "business"),
   ticketController.callTicket,
 );
 
@@ -69,13 +69,13 @@ router.put(
 router.patch(
   "/tickets/:id/serve",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("staff", "owner", "business"),
   ticketController.serveTicket,
 );
 router.put(
   "/tickets/:id/serve",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("staff", "owner", "business"),
   ticketController.serveTicket,
 );
 
@@ -83,7 +83,7 @@ router.put(
 router.patch(
   "/tickets/:id/start",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("staff", "owner", "business"),
   ticketController.startTicket,
 );
 
@@ -91,7 +91,7 @@ router.patch(
 router.patch(
   "/tickets/:id/complete",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("staff", "owner", "business"),
   ticketController.completeTicket,
 );
 
@@ -99,7 +99,7 @@ router.patch(
 router.patch(
   "/tickets/:id/no-show",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("staff", "owner", "business"),
   ticketController.noShowTicket,
 );
 

@@ -122,7 +122,7 @@ router.get("/businesses/:businessId/reviews", async (req, res) => {
     if (!business)
       return res.status(404).json({ message: "Business not found" });
 
-    const match = { businessId: mongoose.Types.ObjectId(businessId) };
+    const match = { businessId: new mongoose.Types.ObjectId(businessId) };
     if (rating) match.rating = Number(rating);
 
     const skip = (Math.max(Number(page), 1) - 1) * Number(limit);
@@ -135,7 +135,7 @@ router.get("/businesses/:businessId/reviews", async (req, res) => {
 
     // average rating aggregation
     const agg = await Review.aggregate([
-      { $match: { businessId: mongoose.Types.ObjectId(businessId) } },
+      { $match: { businessId: new mongoose.Types.ObjectId(businessId) } },
       {
         $group: {
           _id: null,

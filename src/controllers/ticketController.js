@@ -17,13 +17,18 @@ const parsePagination = (query) => {
 // ===============================
 exports.createTicket = async (req, res) => {
   try {
-    const { businessId, queueId, type, priority } = req.body;
+    const { businessId, queueId, type, priority, paymentMethod, paymentIntentId } = req.body;
     const userId = req.user ? req.user.id : null;
 
     if (!businessId)
       return res.status(400).json({ message: "businessId is required" });
     if (!queueId)
       return res.status(400).json({ message: "queueId is required" });
+
+    // If high priority, require payment method
+    if (priority === 'high' && !paymentMethod) {
+      return res.status(400).json({ message: "Payment method is required for high priority tickets" });
+    }
 
     // 1. Check business exists
     const business = await Business.findById(businessId);
@@ -72,6 +77,18 @@ exports.createTicket = async (req, res) => {
       type,
     );
 
+    // Determine payment status
+    let paymentStatus = 'unpaid';
+    if (priority === 'normal') {
+      paymentStatus = 'unpaid'; // Free tickets default to unpaid
+    } else if (priority === 'high' || priority === 'priority' || priority === 'vip') {
+      if (paymentMethod === 'card' && paymentIntentId) {
+        paymentStatus = 'paid'; // Card payment completed
+      } else if (paymentMethod === 'cash' || paymentMethod === 'wallet') {
+        paymentStatus = 'unpaid'; // Pay later at business
+      }
+    }
+
     // Create ticket
     const ticket = await Ticket.create({
       businessId,
@@ -83,6 +100,9 @@ exports.createTicket = async (req, res) => {
       priority: priority || "normal",
       estimatedTime: etaPrediction.estimatedMinutes,
       expectedServiceTime: etaPrediction.expectedTime,
+      paymentStatus,
+      paymentMethod: priority === 'high' ? paymentMethod : null,
+      paymentIntentId: paymentIntentId || null,
     });
 
     // Emit socket events
@@ -300,31 +320,54 @@ exports.getClinicTickets = async (req, res) => {
 // ===============================
 exports.cancelTicket = async (req, res) => {
   try {
-    const { reason } = req.body;
+    console.log("=== CANCEL TICKET START ===");
+    console.log("Ticket ID:", req.params.id);
+    console.log("User:", req.user?.id, req.user?.role);
+    const reason = req.body?.reason || null;
 
     const ticket = await Ticket.findById(req.params.id);
+    console.log("Ticket found:", ticket ? "Yes" : "No");
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
-    if (req.user.role === "user" && ticket.userId.toString() !== req.user.id)
+    // Users can only cancel their own tickets, staff/owner/business can cancel any
+    if (req.user.role === "user" && ticket.userId && ticket.userId.toString() !== req.user.id)
       return res.status(403).json({
         message: "You can only cancel your own tickets",
       });
 
-    if (["done", "cancelled", "missed"].includes(ticket.status))
+    if (["done", "cancelled"].includes(ticket.status))
       return res.status(400).json({
         message: `Cannot cancel a ${ticket.status} ticket`,
       });
 
-    const wasWaiting = ticket.status === "waiting";
+    const wasWaitingOrCalled = ["waiting", "called"].includes(ticket.status);
 
+    console.log("Ticket status:", ticket.status);
+    console.log("Will decrement queue:", wasWaitingOrCalled);
+    
     ticket.status = "cancelled";
-    ticket.cancelReason = reason || null;
+    ticket.cancelReason = reason || "Cancelled by staff";
+    ticket.cancelledBy = req.user.id;
+    
+    console.log("Saving ticket...");
     await ticket.save();
+    console.log("Ticket saved successfully");
 
-    if (wasWaiting) {
+    if (wasWaitingOrCalled) {
+      console.log("Updating queue:", ticket.queueId);
       await Queue.findByIdAndUpdate(ticket.queueId, {
         $inc: { currentCount: -1 },
       });
+      console.log("Queue updated");
+    }
+
+    console.log("Emitting socket events...");
+    const socketIO = req.app.get("socketIO");
+    if (socketIO && ticket.businessId) {
+      socketIO.emitTicketUpdated(ticket.businessId.toString(), ticket);
+      if (wasWaitingOrCalled && ticket.queueId) {
+        socketIO.emitQueueUpdate(ticket.businessId.toString(), ticket.queueId.toString());
+      }
     }
 
     return res.json({
@@ -334,9 +377,10 @@ exports.cancelTicket = async (req, res) => {
     });
   } catch (err) {
     console.error("cancelTicket error:", err);
+    console.error("Stack trace:", err.stack);
     return res
       .status(500)
-      .json({ message: "Server error", error: err.message });
+      .json({ message: "Server error", error: err.message, stack: err.stack });
   }
 };
 
@@ -348,7 +392,7 @@ exports.callTicket = async (req, res) => {
     const ticket = await Ticket.findById(req.params.id).populate("userId");
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
-    if (!["staff", "owner"].includes(req.user.role))
+    if (!["staff", "owner", "business"].includes(req.user.role))
       return res.status(403).json({
         message: "Insufficient permissions to call tickets",
       });
@@ -393,7 +437,7 @@ exports.serveTicket = async (req, res) => {
     const ticket = await Ticket.findById(req.params.id);
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
-    if (!["staff", "owner"].includes(req.user.role))
+    if (!["staff", "owner", "business"].includes(req.user.role))
       return res.status(403).json({
         message: "Insufficient permissions to serve tickets",
       });
@@ -440,6 +484,11 @@ exports.startTicket = async (req, res) => {
 
     ticket.status = "in-progress";
     await ticket.save();
+
+    const socketIO = req.app.get("socketIO");
+    if (socketIO) {
+      socketIO.emitTicketUpdated(ticket.businessId.toString(), ticket);
+    }
 
     return res.json({
       status: "success",
@@ -513,6 +562,14 @@ exports.noShowTicket = async (req, res) => {
       await Queue.findByIdAndUpdate(ticket.queueId, {
         $inc: { currentCount: -1 },
       });
+    }
+
+    const socketIO = req.app.get("socketIO");
+    if (socketIO) {
+      socketIO.emitTicketUpdated(ticket.businessId.toString(), ticket);
+      if (ticket.queueId) {
+        socketIO.emitQueueUpdate(ticket.businessId.toString(), ticket.queueId.toString());
+      }
     }
 
     return res.json({

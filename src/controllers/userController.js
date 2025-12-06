@@ -73,8 +73,54 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// ==================== Upload Profile Photo ====================
+const uploadProfilePhoto = async (req, res) => {
+  try {
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({
+        status: "fail",
+        message: "No file uploaded",
+      });
+    }
+
+    const userId = req.user._id;
+    const profileImageUrl = `/uploads/profiles/${req.file.filename}`;
+
+    // Update user with new profile image
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { profileImage: profileImageUrl },
+      { new: true }
+    ).select("-password").populate("businessIds");
+
+    if (!user) {
+      return res.status(404).json({
+        status: "fail",
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "Profile photo uploaded successfully",
+      data: {
+        profileImage: profileImageUrl,
+        user: new UserDto(user),
+      },
+    });
+  } catch (err) {
+    console.error("Upload profile photo error:", err);
+    res.status(500).json({
+      status: "error",
+      message: err.message,
+    });
+  }
+};
+
 module.exports = {
   getUserInfo,
   updateUserInfo,
   deleteUser,
+  uploadProfilePhoto,
 };

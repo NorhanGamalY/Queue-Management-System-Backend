@@ -6,17 +6,20 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
 // Stripe webhook (public endpoint - must be before other routes)
 router.post("/webhook/stripe", paymentController.stripeWebhook);
 
+// Create Stripe Checkout Session
+router.post("/create-checkout-session", protect, paymentController.createCheckoutSession);
+
 // Verify payment
 router.post("/verify", protect, paymentController.verifyPayment);
 
 // Get user's payment history
 router.get("/users/me/payments", protect, paymentController.getUserPayments);
 
-// Get business payments (owner only)
+// Get business payments (owner/business/admin)
 router.get(
   "/businesses/:businessId/payments",
   protect,
-  restrictTo("owner", "admin"),
+  restrictTo("owner", "business", "admin"),
   paymentController.getBusinessPayments,
 );
 

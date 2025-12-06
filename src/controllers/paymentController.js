@@ -1,6 +1,92 @@
 const Payment = require("../models/paymentSchema");
 const Ticket = require("../models/ticketSchema");
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY || "sk_test_dummy_key");
+const Stripe = require("stripe");
+
+// Helper function to get Stripe instance with proper error handling
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error(
+      "Missing STRIPE_SECRET_KEY environment variable. Set it in .env."
+    );
+  }
+  return Stripe(key);
+}
+
+// -------------------------
+// POST /api/v1/payments/create-checkout-session
+// Create Stripe Checkout Session
+// -------------------------
+exports.createCheckoutSession = async (req, res, next) => {
+  try {
+    const { ticketId } = req.body;
+
+    if (!ticketId) {
+      return res.status(400).json({
+        status: "fail",
+        message: "ticketId is required",
+      });
+    }
+
+    // Verify ticket exists
+    const ticket = await Ticket.findById(ticketId)
+      .populate('businessId', 'name')
+      .populate('queueId', 'name');
+    
+    if (!ticket) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Ticket not found",
+      });
+    }
+
+    // Verify user owns the ticket
+    if (ticket.userId.toString() !== req.user.id) {
+      return res.status(403).json({
+        status: "fail",
+        message: "Not authorized",
+      });
+    }
+
+    const stripe = getStripe();
+
+    // Create Stripe Checkout Session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
+      customer_email: req.user.email,
+      client_reference_id: ticketId,
+      line_items: [
+        {
+          price_data: {
+            currency: process.env.PAYMENT_CURRENCY || "usd",
+            product_data: {
+              name: `Queue Ticket - ${ticket.businessId?.name || 'Business'}`,
+              description: `Ticket #${ticket.ticketNumber} for ${ticket.queueId?.name || 'Queue'}`,
+            },
+            unit_amount: Math.round((ticket.estimatedPrice || 10) * 100), // amount in cents
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        ticketId: ticketId.toString(),
+        userId: req.user.id.toString(),
+        businessId: ticket.businessId?._id.toString() || "",
+        queueId: ticket.queueId?._id.toString() || "",
+      },
+    });
+
+    res.status(200).json({
+      status: "success",
+      sessionUrl: session.url,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
 // -------------------------
 // POST /api/v1/payments
@@ -427,15 +513,91 @@ exports.getReceipt = async (req, res) => {
 
 // -------------------------
 // POST /api/v1/payments/webhook/stripe
-// Stripe webhook handler
+// Get webhook from stripe when payment is successful
+// Create payment records in DB
 // -------------------------
 exports.stripeWebhook = async (req, res) => {
+  let event;
   try {
+    const stripe = getStripe();
+    const signature = req.headers["stripe-signature"];
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+    console.log("Webhook verified:", event.type);
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  try {
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      const metadata = session.metadata || {};
+      const userId = metadata.userId;
+      const ticketId = session.client_reference_id || metadata.ticketId;
+      const businessId = metadata.businessId;
+      const queueId = metadata.queueId;
+      const amountPaid = session.amount_total / 100; // Convert from cents
+
+      // Find the ticket
+      const ticket = await Ticket.findById(ticketId);
+      if (!ticket) {
+        console.error("Ticket not found for webhook session:", ticketId);
+        return res.status(400).send("Ticket not found");
+      }
+
+      // Check for duplicate payment to prevent double-processing
+      const existingPayment = await Payment.findOne({
+        ticketId: ticket._id,
+        status: "completed",
+        amount: amountPaid,
+      });
+
+      if (existingPayment) {
+        console.log("Duplicate payment ignored for ticket:", ticketId);
+        return res.status(200).json({ received: true });
+      }
+
+      // Create payment record
+      await Payment.create({
+        userId: userId,
+        ticketId: ticketId,
+        businessId: businessId,
+        amount: amountPaid,
+        paymentMethod: "card",
+        status: "completed",
+        transactionId: session.payment_intent,
+        stripePaymentIntentId: session.payment_intent,
+        paidAt: new Date(),
+      });
+
+      // Update ticket payment status
+      ticket.paymentStatus = "paid";
+      await ticket.save();
+
+      console.log("Checkout session completed:", session.id);
+    }
+
+    res.status(200).json({ received: true });
+  } catch (err) {
+    console.error("Error processing webhook event:", err);
+    res.status(400).send(`Webhook Internal Error: ${err.message}`);
+  }
+};
+
+// -------------------------
+// Legacy webhook handlers for other payment methods
+// -------------------------
+exports.stripeWebhookLegacy = async (req, res) => {
+  try {
+    const stripe = getStripe();
     const sig = req.headers["stripe-signature"];
     let event;
 
     try {
-      // Verify webhook signature
       event = stripe.webhooks.constructEvent(
         req.body,
         sig,
@@ -448,6 +610,7 @@ exports.stripeWebhook = async (req, res) => {
 
     // Handle different event types
     switch (event.type) {
+
       case "payment_intent.succeeded":
         const paymentIntent = event.data.object;
         

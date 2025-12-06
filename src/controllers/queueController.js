@@ -125,6 +125,48 @@ exports.closeQueue = async (req, res) => {
   }
 };
 
+// =========================== GET QUEUE BY BUSINESS ID ===========================
+exports.getQueueByBusinessId = async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    
+    // Get today's date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Find today's queue for the business
+    let queue = await Queue.findOne({
+      businessId,
+      createdAt: { $gte: today, $lt: tomorrow },
+    }).sort({ createdAt: -1 });
+
+    // If no queue exists for today, create one
+    if (!queue) {
+      queue = await Queue.create({
+        businessId,
+        maxCapacity: 50,
+        status: "active",
+        currentCount: 0,
+        currentTicketNumber: 0,
+        date: today,
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: queue,
+    });
+  } catch (err) {
+    console.error("Get queue by business ID error:", err);
+    res.status(500).json({
+      message: "Server error fetching queue",
+      error: err.message,
+    });
+  }
+};
+
 // =========================== DELETE QUEUE ===========================
 exports.deleteQueue = async (req, res) => {
   try {
