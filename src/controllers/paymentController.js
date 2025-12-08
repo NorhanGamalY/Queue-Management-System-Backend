@@ -75,7 +75,9 @@ exports.createPayment = async (req, res) => {
     });
 
     // Update ticket payment status
-    ticket.paymentStatus = "paid";
+    // Mark as paid only when immediate confirmation exists (card)
+    // For cash, keep as unpaid until staff marks payment complete
+    ticket.paymentStatus = stripePaymentIntent ? "paid" : "unpaid";
     await ticket.save();
 
     res.status(201).json({

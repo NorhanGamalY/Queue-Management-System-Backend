@@ -20,7 +20,16 @@ const socketHandler = (io) => {
     // Client → joinClinic (join room by businessId)
     // =========================================
     socket.on("joinBusiness", (data) => {
-      const { businessId, userId, role } = data;
+      // Handle case where data might be undefined or just a string
+      if (!data) {
+        socket.emit("error", { message: "Invalid data format" });
+        return;
+      }
+
+      // If data is a string, treat it as businessId
+      const businessId = typeof data === 'string' ? data : data.businessId;
+      const userId = typeof data === 'object' ? data.userId : null;
+      const role = typeof data === 'object' ? data.role : null;
       
       if (!businessId) {
         socket.emit("error", { message: "businessId is required" });
@@ -93,6 +102,230 @@ const socketHandler = (io) => {
 
       console.log(`📢 Staff ${staffId} calling next ticket for business ${businessId}`);
     });
+
+    // =========================================
+    // CALL SPECIFIC TICKET
+    // Client → callTicket
+    // =========================================
+    socket.on("callTicket", async (data) => {
+      try {
+        const { ticketId, businessId } = data;
+
+        if (!ticketId || !businessId) {
+          socket.emit("error", { message: "ticketId and businessId are required" });
+          return;
+        }
+
+        // Import ticket controller
+        const Ticket = require("../models/ticketSchema");
+        
+        const ticket = await Ticket.findById(ticketId).populate("userId");
+        if (!ticket) {
+          socket.emit("error", { message: "Ticket not found" });
+          return;
+        }
+
+        if (ticket.status !== "waiting") {
+          socket.emit("error", { message: "Only waiting tickets can be called" });
+          return;
+        }
+
+        ticket.status = "called";
+        ticket.calledAt = new Date();
+        await ticket.save();
+
+        // Emit to business room
+        io.to(`business_${businessId}`).emit("ticketCalled", {
+          ticket,
+          timestamp: new Date(),
+        });
+
+        // Emit to user if connected
+        if (ticket.userId?._id) {
+          io.to(`user_${ticket.userId._id}`).emit("yourTicketCalled", {
+            ticket,
+            message: "Your ticket has been called! Please proceed to the counter.",
+            timestamp: new Date(),
+          });
+        }
+
+        socket.emit("ticketActionSuccess", {
+          action: "called",
+          ticket,
+          message: "Ticket called successfully",
+        });
+
+        console.log(`📢 Ticket ${ticketId} called for business ${businessId}`);
+      } catch (error) {
+        console.error("callTicket error:", error);
+        socket.emit("error", { message: "Failed to call ticket", error: error.message });
+      }
+    });
+
+    // =========================================
+    // SKIP TICKET (Mark as No-Show)
+    // Client → skipTicket
+    // =========================================
+    socket.on("skipTicket", async (data) => {
+      try {
+        const { ticketId, businessId } = data;
+
+        if (!ticketId || !businessId) {
+          socket.emit("error", { message: "ticketId and businessId are required" });
+          return;
+        }
+
+        const Ticket = require("../models/ticketSchema");
+        const Queue = require("../models/queueSchema");
+
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) {
+          socket.emit("error", { message: "Ticket not found" });
+          return;
+        }
+
+        if (ticket.status !== "waiting") {
+          socket.emit("error", { message: "Only waiting tickets can be skipped" });
+          return;
+        }
+
+        ticket.status = "missed";
+        await ticket.save();
+
+        // Update queue count
+        if (ticket.queueId) {
+          await Queue.findByIdAndUpdate(ticket.queueId, {
+            $inc: { currentCount: -1 },
+          });
+        }
+
+        // Emit to business room
+        io.to(`business_${businessId}`).emit("ticketSkipped", {
+          ticket,
+          timestamp: new Date(),
+        });
+
+        socket.emit("ticketActionSuccess", {
+          action: "skipped",
+          ticket,
+          message: "Ticket marked as no-show",
+        });
+
+        console.log(`⏭️ Ticket ${ticketId} skipped for business ${businessId}`);
+      } catch (error) {
+        console.error("skipTicket error:", error);
+        socket.emit("error", { message: "Failed to skip ticket", error: error.message });
+      }
+    });
+
+    // =========================================
+    // CANCEL TICKET
+    // Client → cancelTicket
+    // =========================================
+    socket.on("cancelTicket", async (data) => {
+      try {
+        const { ticketId, businessId, reason } = data;
+
+        if (!ticketId || !businessId) {
+          socket.emit("error", { message: "ticketId and businessId are required" });
+          return;
+        }
+
+        const Ticket = require("../models/ticketSchema");
+        const Queue = require("../models/queueSchema");
+
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) {
+          socket.emit("error", { message: "Ticket not found" });
+          return;
+        }
+
+        if (["done", "cancelled", "missed"].includes(ticket.status)) {
+          socket.emit("error", { message: `Cannot cancel a ${ticket.status} ticket` });
+          return;
+        }
+
+        const wasWaiting = ticket.status === "waiting";
+
+        ticket.status = "cancelled";
+        ticket.cancelReason = reason || null;
+        await ticket.save();
+
+        // Update queue count if was waiting
+        if (wasWaiting && ticket.queueId) {
+          await Queue.findByIdAndUpdate(ticket.queueId, {
+            $inc: { currentCount: -1 },
+          });
+        }
+
+        // Emit to business room
+        io.to(`business_${businessId}`).emit("ticketCancelled", {
+          ticket,
+          timestamp: new Date(),
+        });
+
+        socket.emit("ticketActionSuccess", {
+          action: "cancelled",
+          ticket,
+          message: "Ticket cancelled successfully",
+        });
+
+        console.log(`✕ Ticket ${ticketId} cancelled for business ${businessId}`);
+      } catch (error) {
+        console.error("cancelTicket error:", error);
+        socket.emit("error", { message: "Failed to cancel ticket", error: error.message });
+      }
+    });
+
+    // =========================================
+    // COMPLETE TICKET
+    // Client → completeTicket
+    // =========================================
+    socket.on("completeTicket", async (data) => {
+      try {
+        const { ticketId, businessId } = data;
+
+        if (!ticketId || !businessId) {
+          socket.emit("error", { message: "ticketId and businessId are required" });
+          return;
+        }
+
+        const Ticket = require("../models/ticketSchema");
+
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) {
+          socket.emit("error", { message: "Ticket not found" });
+          return;
+        }
+
+        if (ticket.status === "done") {
+          socket.emit("error", { message: "Ticket already completed" });
+          return;
+        }
+
+        ticket.status = "done";
+        ticket.completedAt = new Date();
+        await ticket.save();
+
+        // Emit to business room
+        io.to(`business_${businessId}`).emit("ticketCompleted", {
+          ticket,
+          timestamp: new Date(),
+        });
+
+        socket.emit("ticketActionSuccess", {
+          action: "completed",
+          ticket,
+          message: "Ticket completed successfully",
+        });
+
+        console.log(`✓ Ticket ${ticketId} completed for business ${businessId}`);
+      } catch (error) {
+        console.error("completeTicket error:", error);
+        socket.emit("error", { message: "Failed to complete ticket", error: error.message });
+      }
+    });
+
 
     // =========================================
     // JOIN USER'S PERSONAL ROOM (for notifications)

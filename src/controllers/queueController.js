@@ -3,6 +3,41 @@ const Queue = require("../models/queueSchema");
 const Business = require("../models/businessSchema");
 const Ticket = require("../models/ticketSchema");
 
+// =========================== GET TODAY'S QUEUE ===========================
+exports.getTodayQueue = async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const queue = await Queue.findOne({
+      businessId,
+      createdAt: { $gte: today, $lt: tomorrow },
+    });
+
+    if (!queue) {
+      return res.status(200).json({ // Return 200 with null data if no queue
+        status: "success",
+        data: null, 
+        message: "No queue found for today"
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: queue,
+    });
+  } catch (err) {
+    console.error("Get today queue error:", err);
+    res.status(500).json({
+      message: "Server error getting queue",
+      error: err.message,
+    });
+  }
+};
+
 // =========================== CREATE QUEUE ===========================
 exports.createQueue = async (req, res) => {
   try {

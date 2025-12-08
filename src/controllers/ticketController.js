@@ -85,6 +85,13 @@ exports.createTicket = async (req, res) => {
       expectedServiceTime: etaPrediction.expectedTime,
     });
 
+    // Link user to business clients list
+    if (userId) {
+      await Business.findByIdAndUpdate(businessId, {
+        $addToSet: { ourClients: userId },
+      });
+    }
+
     // Emit socket events
     const socketIO = req.app.get("socketIO");
     if (socketIO) {

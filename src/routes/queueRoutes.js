@@ -14,6 +14,12 @@ router.post(
   queueController.createQueue,
 );
 
+router.get(
+  "/business/:businessId/queue/today",
+  protect,
+  queueController.getTodayQueue,
+);
+
 router.patch(
   "/queue/:id/pause",
   protect,
