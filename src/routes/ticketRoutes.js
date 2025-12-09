@@ -8,7 +8,7 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
 
 // Create new ticket (book appointment) - any logged-in user
 // POST /api/clinics/:id/tickets (Documentation compatible)
-router.post("/tickets", protect, ticketController.createTicket);
+router.post("/", protect, ticketController.createTicket);
 router.post(
   "/clinics/:clinicId/tickets",
   protect,
@@ -22,7 +22,7 @@ router.post(
 
 // Get all tickets (admin/staff only)
 router.get(
-  "/tickets",
+  "/",
   protect,
   restrictTo("admin", "staff"),
   ticketController.getAllTickets,
@@ -31,12 +31,21 @@ router.get(
 // Get current user's tickets
 router.get("/users/me/tickets", protect, ticketController.getMyTickets);
 
-// Get tickets for business/clinic (owner/staff only)
+// Get my business tickets (for logged-in business - uses their own ID)
+// MUST come before /businesses/:businessId/tickets to match correctly
+router.get(
+  "/businesses/me/tickets",
+  protect,
+  restrictTo("business"),
+  ticketController.getMyBusinessTickets,
+);
+
+// Get tickets for business/clinic (business/owner/staff only)
 // GET /api/clinics/:id/tickets (Documentation compatible)
 router.get(
   "/businesses/:businessId/tickets",
   protect,
-  restrictTo("owner", "staff"),
+  restrictTo("business", "owner", "staff"),
   ticketController.getBusinessTickets,
 );
 router.get(
@@ -45,62 +54,63 @@ router.get(
   ticketController.getClinicTickets,
 );
 
-// Get ticket by ID (dynamic route must be last among GETs)
-router.get("/tickets/:id", protect, ticketController.getTicketById);
-
+// IMPORTANT: Specific routes must come before generic /tickets/:id route
 // Cancel ticket
-router.patch("/tickets/:id/cancel", protect, ticketController.cancelTicket);
+router.patch("/:id/cancel", protect, ticketController.cancelTicket);
 
-// Call ticket (staff only) - Documentation: PUT /api/tickets/:id/call
+// Call ticket (business/staff/owner only) - Documentation: PUT /api/tickets/:id/call
 router.patch(
-  "/tickets/:id/call",
+  "/:id/call",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("business", "staff", "owner"),
   ticketController.callTicket,
 );
 router.put(
-  "/tickets/:id/call",
+  "/:id/call",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("business", "staff", "owner"),
   ticketController.callTicket,
 );
 
-// Serve ticket (staff only) - Documentation: PUT /api/tickets/:id/serve
+// Serve ticket (business/staff/owner only) - Documentation: PUT /api/tickets/:id/serve
 router.patch(
-  "/tickets/:id/serve",
+  "/:id/serve",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("business", "staff", "owner"),
   ticketController.serveTicket,
 );
 router.put(
-  "/tickets/:id/serve",
+  "/:id/serve",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("business", "staff", "owner"),
   ticketController.serveTicket,
 );
 
-// Start serving ticket (staff only)
+// Start serving ticket (business/staff/owner only)
 router.patch(
-  "/tickets/:id/start",
+  "/:id/start",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("business", "staff", "owner"),
   ticketController.startTicket,
 );
 
-// Complete ticket (staff only)
+// Complete ticket (business/staff/owner only)
 router.patch(
-  "/tickets/:id/complete",
+  "/:id/complete",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("business", "staff", "owner"),
   ticketController.completeTicket,
 );
 
-// Mark ticket as no-show (staff only)
+// Mark ticket as no-show (business/staff/owner only)
 router.patch(
-  "/tickets/:id/no-show",
+  "/:id/no-show",
   protect,
-  restrictTo("staff", "owner"),
+  restrictTo("business", "staff", "owner"),
   ticketController.noShowTicket,
 );
+
+// Get ticket by ID (dynamic route must be last among GETs)
+router.get("/:id", protect, ticketController.getTicketById);
 
 module.exports = router;

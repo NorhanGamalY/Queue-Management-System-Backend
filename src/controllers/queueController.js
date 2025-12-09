@@ -72,6 +72,16 @@ exports.createQueue = async (req, res) => {
       date: new Date(date),
     });
 
+    const socketIO = req.app.get("socketIO");
+    if (socketIO) {
+      socketIO.emitQueueUpdate(businessId, {
+        queueId: queue._id.toString(),
+        status: queue.status,
+        currentCount: queue.currentCount,
+        currentTicketNumber: queue.currentTicketNumber,
+      });
+    }
+
     res.status(201).json({
       status: "success",
       data: queue,
@@ -95,6 +105,16 @@ exports.pauseQueue = async (req, res) => {
     );
 
     if (!queue) return res.status(404).json({ message: "Queue not found" });
+
+    const socketIO = req.app.get("socketIO");
+    if (socketIO) {
+      socketIO.emitQueueUpdate(queue.businessId.toString(), {
+        queueId: queue._id.toString(),
+        status: queue.status,
+        currentCount: queue.currentCount,
+        currentTicketNumber: queue.currentTicketNumber,
+      });
+    }
 
     res.status(200).json({
       status: "success",
@@ -121,6 +141,16 @@ exports.resumeQueue = async (req, res) => {
 
     if (!queue) return res.status(404).json({ message: "Queue not found" });
 
+    const socketIO = req.app.get("socketIO");
+    if (socketIO) {
+      socketIO.emitQueueUpdate(queue.businessId.toString(), {
+        queueId: queue._id.toString(),
+        status: queue.status,
+        currentCount: queue.currentCount,
+        currentTicketNumber: queue.currentTicketNumber,
+      });
+    }
+
     res.status(200).json({
       status: "success",
       message: "Queue resumed successfully",
@@ -136,25 +166,120 @@ exports.resumeQueue = async (req, res) => {
 };
 
 // =========================== CLOSE QUEUE ===========================
+// =========================== CLOSE QUEUE ===========================
 exports.closeQueue = async (req, res) => {
   try {
+    const queueId = req.params.id;
+    
+    // Find all waiting tickets for this queue
+    const waitingTickets = await Ticket.find({
+      queueId,
+      status: "waiting"
+    });
+
+    // Update all waiting tickets to cancelled
+    await Ticket.updateMany(
+      { queueId, status: "waiting" },
+      { 
+        status: "cancelled", 
+        cancelReason: "Queue Closed",
+        cancelledBy: req.user._id // Assuming admin/owner is closing
+      }
+    );
+
+    // Reset queue data when closing
     const queue = await Queue.findByIdAndUpdate(
-      req.params.id,
-      { status: "closed" },
+      queueId,
+      { 
+        status: "closed",
+        currentCount: 0,
+        currentTicketNumber: 0
+      },
       { new: true, runValidators: true },
     );
 
     if (!queue) return res.status(404).json({ message: "Queue not found" });
 
+    const socketIO = req.app.get("socketIO");
+    if (socketIO) {
+      // Emit queue update
+      socketIO.emitQueueUpdate(queue.businessId.toString(), {
+        queueId: queue._id.toString(),
+        status: queue.status,
+        currentCount: 0,
+        currentTicketNumber: 0,
+      });
+
+      // Emit cancellation events for all waiting tickets
+      waitingTickets.forEach(ticket => {
+        // We can't efficiently populate all in a loop, but we can emit basic info
+        // Ideally we'd do a bulk populate or just emit the ID status change
+        // For now, let's emit the critical status update
+        const ticketUpdate = {
+          _id: ticket._id,
+          businessId: ticket.businessId,
+          queueId: ticket.queueId,
+          userId: ticket.userId,
+          status: "cancelled",
+          cancelReason: "Queue Closed"
+        };
+        
+        socketIO.emitTicketUpdated(ticket.businessId.toString(), ticketUpdate);
+        socketIO.emitTicketCancelled(ticket.businessId.toString(), ticketUpdate);
+        
+        if (ticket.userId) {
+          socketIO.emitToUser(ticket.userId.toString(), "ticketUpdated", { ticket: ticketUpdate });
+        }
+      });
+    }
+
     res.status(200).json({
       status: "success",
-      message: "Queue closed for the day",
+      message: `Queue closed. ${waitingTickets.length} waiting tickets cancelled.`,
       data: queue,
     });
   } catch (err) {
     console.error("Close queue error:", err);
     res.status(500).json({
       message: "Server error closing queue",
+      error: err.message,
+    });
+  }
+};
+
+// =========================== UPDATE QUEUE ===========================
+exports.updateQueue = async (req, res) => {
+  try {
+    const { maxCapacity } = req.body;
+    
+    const queue = await Queue.findByIdAndUpdate(
+      req.params.id,
+      { maxCapacity },
+      { new: true, runValidators: true }
+    );
+
+    if (!queue) return res.status(404).json({ message: "Queue not found" });
+
+    const socketIO = req.app.get("socketIO");
+    if (socketIO) {
+      socketIO.emitQueueUpdate(queue.businessId.toString(), {
+        queueId: queue._id.toString(),
+        status: queue.status,
+        currentCount: queue.currentCount,
+        currentTicketNumber: queue.currentTicketNumber,
+        maxCapacity: queue.maxCapacity
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "Queue updated successfully",
+      data: queue,
+    });
+  } catch (err) {
+    console.error("Update queue error:", err);
+    res.status(500).json({
+      message: "Server error updating queue",
       error: err.message,
     });
   }

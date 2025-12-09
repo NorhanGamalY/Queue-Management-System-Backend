@@ -15,6 +15,13 @@ router.get("/business", businessController.getAllBusinesses);
 // Get business by ID
 router.get("/business/:id", businessController.getBusinessById);
 
+// -------------------------
+// ME ROUTES (Logged-in Business)
+// -------------------------
+router.get("/me", protect, businessController.getBusinessInfo);
+router.put("/me", protect, businessController.updateBusinessInfo);
+router.delete("/me", protect, businessController.deleteBusiness);
+
 // Update business by ID (only owner or admin)
 router.put(
   "/business/:id",

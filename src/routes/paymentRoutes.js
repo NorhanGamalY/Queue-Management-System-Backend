@@ -31,6 +31,9 @@ router.get(
 // Create payment
 router.post("/", protect, paymentController.createPayment);
 
+// Card checkout that books ticket only after successful payment
+router.post("/checkout/card", protect, paymentController.checkoutCardAndCreateTicket);
+
 // Get payment receipt
 router.get("/:id/receipt", protect, paymentController.getReceipt);
 

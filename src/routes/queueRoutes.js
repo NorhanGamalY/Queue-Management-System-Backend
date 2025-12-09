@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const queueController = require("../controllers/queueController");
+const ticketController = require("../controllers/ticketController");
 const {
   protect,
   restrictToOwnerOrAdmin,
@@ -39,6 +40,20 @@ router.patch(
   protect,
   allowQueueOwnerOrAdmin,
   queueController.closeQueue,
+);
+
+router.patch(
+  "/queue/:id",
+  protect,
+  allowQueueOwnerOrAdmin,
+  queueController.updateQueue,
+);
+
+router.patch(
+  "/queue/:id/call-next",
+  protect,
+  allowQueueOwnerOrAdmin,
+  ticketController.callNextTicket,
 );
 
 router.delete(

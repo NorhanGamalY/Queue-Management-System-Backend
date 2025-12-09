@@ -1,4 +1,5 @@
 const User = require("../models/userSchema");
+const Ticket = require("../models/ticketSchema");
 
 // DTO to return only safe fields
 class UserDto {
@@ -65,6 +66,12 @@ const deleteUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User Not Found..! ❌" });
     }
+
+    // Clean up waiting tickets
+    await Ticket.deleteMany({
+      userId: req.user._id,
+      status: "waiting", // Only delete waiting tickets, keep history of completed/cancelled
+    });
 
     res.status(200).json({ message: "Your profile has been deleted ✅" });
   } catch (error) {

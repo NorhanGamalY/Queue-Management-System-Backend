@@ -30,6 +30,11 @@ exports.createTicket = async (req, res) => {
     if (!business)
       return res.status(404).json({ message: "Business not found" });
 
+    // Business must be open/active
+    if (business.status !== "active") {
+      return res.status(400).json({ message: "Business is closed" });
+    }
+
     // 2. Check queue exists
     const queue = await Queue.findById(queueId);
     if (!queue) return res.status(404).json({ message: "Queue not found" });
@@ -92,15 +97,26 @@ exports.createTicket = async (req, res) => {
       });
     }
 
-    // Emit socket events
+    // Emit socket events - populate ticket before emitting
     const socketIO = req.app.get("socketIO");
     if (socketIO) {
-      socketIO.emitTicketCreated(businessId, ticket);
-      socketIO.emitQueueUpdate(businessId, {
-        queueId,
+      // Populate ticket with user and queue data before emitting
+      const populatedTicket = await Ticket.findById(ticket._id)
+        .populate("userId")
+        .populate("queueId");
+      
+      // Ensure businessId is a string
+      const businessIdStr = businessId.toString();
+      
+      socketIO.emitTicketCreated(businessIdStr, populatedTicket);
+      socketIO.emitQueueUpdate(businessIdStr, {
+        queueId: queueId.toString(),
+        status: updatedQueue.status,
         currentCount: updatedQueue.currentCount,
         currentTicketNumber: updatedQueue.currentTicketNumber,
       });
+      
+      console.log(`📤 Emitted ticketCreated and queueUpdated for business ${businessIdStr}`);
     }
 
     return res.status(201).json({
@@ -223,13 +239,39 @@ exports.getMyTickets = async (req, res) => {
       Ticket.countDocuments(filter),
     ]);
 
+    // Calculate position and people before for each ticket
+    const ticketsWithPosition = await Promise.all(
+      tickets.map(async (ticket) => {
+        if (ticket.status === "waiting" && ticket.queueId) {
+          // Count how many waiting tickets have a lower ticket number
+          const waitingTicketsBefore = await Ticket.countDocuments({
+            queueId: ticket.queueId,
+            status: "waiting",
+            ticketNumber: { $lt: ticket.ticketNumber },
+          });
+          
+          const ticketObj = ticket.toObject();
+          ticketObj.position = waitingTicketsBefore + 1;
+          ticketObj.peopleBefore = waitingTicketsBefore;
+          ticketObj.estimatedWaitTime = ticket.estimatedTime || 15;
+          return ticketObj;
+        }
+        
+        const ticketObj = ticket.toObject();
+        ticketObj.position = null;
+        ticketObj.peopleBefore = null;
+        ticketObj.estimatedWaitTime = ticket.estimatedTime || 15;
+        return ticketObj;
+      })
+    );
+
     return res.json({
       status: "success",
       page,
       limit,
       total,
-      results: tickets.length,
-      data: tickets,
+      results: ticketsWithPosition.length,
+      data: ticketsWithPosition,
     });
   } catch (err) {
     console.error("getMyTickets error:", err);
@@ -259,13 +301,41 @@ exports.getBusinessTickets = async (req, res) => {
     if (status) filter.status = status;
     if (userId) filter.userId = userId;
 
-    // owner check
-    if (req.user.role === "owner") {
-      const business = await Business.findById(businessId);
-      if (!business || business.owner.toString() !== req.user.id)
+    // Authorization check
+    const business = await Business.findById(businessId);
+    if (!business) {
+      return res.status(404).json({
+        message: "Business not found",
+      });
+    }
+
+    // Business entity (logged in as business) - can only access their own tickets
+    if (req.user.role === "business") {
+      if (req.user._id.toString() !== businessId.toString()) {
+        return res.status(403).json({
+          message: "You can only access tickets for your own business",
+        });
+      }
+    }
+    // Owner role (user with owner role) - must own the business
+    else if (req.user.role === "owner") {
+      // Check if user's businessIds includes this business
+      const userBusinessIds = req.user.businessIds?.map(id => id.toString()) || [];
+      if (!userBusinessIds.includes(businessId.toString())) {
         return res.status(403).json({
           message: "You do not own this business",
         });
+      }
+    }
+    // Staff role - must be associated with the business
+    else if (req.user.role === "staff") {
+      // Check if staff member's businessIds includes this business
+      const userBusinessIds = req.user.businessIds?.map(id => id.toString()) || [];
+      if (!userBusinessIds.includes(businessId.toString())) {
+        return res.status(403).json({
+          message: "You are not authorized to access tickets for this business",
+        });
+      }
     }
 
     const { page, limit, skip } = parsePagination(req.query);
@@ -303,6 +373,55 @@ exports.getClinicTickets = async (req, res) => {
 };
 
 // ===============================
+// GET MY BUSINESS TICKETS (for logged-in business)
+// ===============================
+exports.getMyBusinessTickets = async (req, res) => {
+  try {
+    // Use the logged-in business's ID
+    const businessId = req.user._id.toString();
+    const filter = { businessId };
+    const { date, status, userId } = req.query;
+
+    if (date) {
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      filter.createdAt = { $gte: start, $lt: end };
+    }
+
+    if (status) filter.status = status;
+    if (userId) filter.userId = userId;
+
+    const { page, limit, skip } = parsePagination(req.query);
+
+    const [tickets, total] = await Promise.all([
+      Ticket.find(filter)
+        .populate("userId")
+        .populate("queueId")
+        .skip(skip)
+        .limit(limit)
+        .sort("-createdAt"),
+      Ticket.countDocuments(filter),
+    ]);
+
+    return res.json({
+      status: "success",
+      page,
+      limit,
+      total,
+      results: tickets.length,
+      data: tickets,
+    });
+  } catch (err) {
+    console.error("getMyBusinessTickets error:", err);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: err.message });
+  }
+};
+
+// ===============================
 // CANCEL TICKET
 // ===============================
 exports.cancelTicket = async (req, res) => {
@@ -329,9 +448,39 @@ exports.cancelTicket = async (req, res) => {
     await ticket.save();
 
     if (wasWaiting) {
-      await Queue.findByIdAndUpdate(ticket.queueId, {
+      const updatedQueue = await Queue.findByIdAndUpdate(ticket.queueId, {
         $inc: { currentCount: -1 },
-      });
+      }, { new: true });
+
+      // Emit socket events
+      const socketIO = req.app.get("socketIO");
+      if (socketIO) {
+        // Populate ticket before emitting
+        const populatedTicket = await Ticket.findById(ticket._id)
+          .populate("userId")
+          .populate("queueId");
+        socketIO.emitTicketUpdated(ticket.businessId.toString(), populatedTicket);
+        socketIO.emitTicketCancelled(ticket.businessId.toString(), populatedTicket);
+        if (updatedQueue) {
+          socketIO.emitQueueUpdate(ticket.businessId.toString(), {
+            queueId: updatedQueue._id.toString(),
+            status: updatedQueue.status,
+            currentCount: updatedQueue.currentCount,
+            currentTicketNumber: updatedQueue.currentTicketNumber,
+          });
+        }
+      }
+    } else {
+      // Emit socket event even if not waiting
+      const socketIO = req.app.get("socketIO");
+      if (socketIO) {
+        // Populate ticket before emitting
+        const populatedTicket = await Ticket.findById(ticket._id)
+          .populate("userId")
+          .populate("queueId");
+        socketIO.emitTicketUpdated(ticket.businessId.toString(), populatedTicket);
+        socketIO.emitTicketCancelled(ticket.businessId.toString(), populatedTicket);
+      }
     }
 
     return res.json({
@@ -348,6 +497,87 @@ exports.cancelTicket = async (req, res) => {
 };
 
 // ===============================
+// CALL NEXT TICKET
+// ===============================
+exports.callNextTicket = async (req, res) => {
+  try {
+    const queueId = req.params.id;
+    // req.user has been populated by protect middleware
+    
+    // Check queue exists and is active
+    const queue = await Queue.findById(queueId);
+    if (!queue) return res.status(404).json({ message: "Queue not found" });
+    
+    if (queue.status !== "active") {
+      return res.status(400).json({ message: "Queue is not active" });
+    }
+
+    // Authorization: Member of business
+    // Logic similar to callTicket but we check business ownership of the queue
+    if (req.user.role === "business") {
+      if (queue.businessId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+    } else if (["staff", "owner"].includes(req.user.role)) {
+       // Ideally check if user belongs to business, simplified here or rely on middleware if refined
+       // restrictToOwnerOrAdmin middleware in route usually handles this
+    }
+
+    // Find next waiting ticket
+    // Sort by priority (vip > priority > normal) and then ticketNumber
+    // We can map priority string to number for sort if needed, but for now let's assume FIFO by ticketNumber
+    // If you want priority implementation: .sort({ priority: -1, ticketNumber: 1 }) if priority was comparable
+    // adjusting sort to ticketNumber ascending
+    const nextTicket = await Ticket.findOne({
+      queueId: queueId,
+      status: "waiting"
+    }).sort({ ticketNumber: 1 });
+
+    if (!nextTicket) {
+      return res.status(404).json({ message: "No waiting tickets in the queue" });
+    }
+
+    // Update ticket
+    nextTicket.status = "called";
+    nextTicket.calledAt = new Date();
+    await nextTicket.save();
+
+    // Socket events
+    const socketIO = req.app.get("socketIO");
+    if (socketIO) {
+      // Populate ticket before emitting
+      const populatedTicket = await Ticket.findById(nextTicket._id)
+        .populate("userId")
+        .populate("queueId")
+        .populate("businessId"); // Ensure businessId is populated if needed for client structure
+        
+      socketIO.emitTicketCalled(
+        nextTicket.businessId.toString(),
+        populatedTicket,
+        nextTicket.userId?._id?.toString(),
+      );
+      socketIO.emitTicketUpdated(nextTicket.businessId.toString(), populatedTicket);
+      
+      // Also emit callNext event specifically if frontend listens to it
+      socketIO.emit("callNext", {
+         ticketId: nextTicket._id,
+         businessId: nextTicket.businessId,
+         ticket: populatedTicket
+      });
+    }
+
+    return res.json({
+      status: "success",
+      message: "Ticket called",
+      data: nextTicket,
+    });
+  } catch (err) {
+    console.error("callNextTicket error:", err);
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ===============================
 // CALL TICKET
 // ===============================
 exports.callTicket = async (req, res) => {
@@ -355,10 +585,19 @@ exports.callTicket = async (req, res) => {
     const ticket = await Ticket.findById(req.params.id).populate("userId");
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
-    if (!["staff", "owner"].includes(req.user.role))
+    // Check authorization: business can call tickets for their own business, staff/owner can call for associated businesses
+    if (req.user.role === "business") {
+      // Business can only call tickets for their own business
+      if (ticket.businessId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          message: "You can only call tickets for your own business",
+        });
+      }
+    } else if (!["staff", "owner"].includes(req.user.role)) {
       return res.status(403).json({
         message: "Insufficient permissions to call tickets",
       });
+    }
 
     if (ticket.status !== "waiting")
       return res.status(400).json({
@@ -371,12 +610,16 @@ exports.callTicket = async (req, res) => {
 
     const socketIO = req.app.get("socketIO");
     if (socketIO) {
+      // Populate ticket before emitting
+      const populatedTicket = await Ticket.findById(ticket._id)
+        .populate("userId")
+        .populate("queueId");
       socketIO.emitTicketCalled(
         ticket.businessId.toString(),
-        ticket,
+        populatedTicket,
         ticket.userId?._id?.toString(),
       );
-      socketIO.emitTicketUpdated(ticket.businessId.toString(), ticket);
+      socketIO.emitTicketUpdated(ticket.businessId.toString(), populatedTicket);
     }
 
     return res.json({
@@ -400,10 +643,19 @@ exports.serveTicket = async (req, res) => {
     const ticket = await Ticket.findById(req.params.id);
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
-    if (!["staff", "owner"].includes(req.user.role))
+    // Check authorization: business can serve tickets for their own business, staff/owner can serve for associated businesses
+    if (req.user.role === "business") {
+      // Business can only serve tickets for their own business
+      if (ticket.businessId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          message: "You can only serve tickets for your own business",
+        });
+      }
+    } else if (!["staff", "owner"].includes(req.user.role)) {
       return res.status(403).json({
         message: "Insufficient permissions to serve tickets",
       });
+    }
 
     if (!["called", "waiting"].includes(ticket.status))
       return res.status(400).json({
@@ -469,6 +721,15 @@ exports.completeTicket = async (req, res) => {
     const ticket = await Ticket.findById(req.params.id);
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
+    // Check authorization: business can complete tickets for their own business
+    if (req.user.role === "business") {
+      if (ticket.businessId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          message: "You can only complete tickets for your own business",
+        });
+      }
+    }
+
     if (ticket.status === "done")
       return res.status(400).json({
         message: "Ticket already completed",
@@ -480,10 +741,28 @@ exports.completeTicket = async (req, res) => {
 
     const socketIO = req.app.get("socketIO");
     if (socketIO) {
-      socketIO.emitTicketUpdated(ticket.businessId.toString(), ticket);
+      // Populate ticket before emitting
+      const populatedTicket = await Ticket.findById(ticket._id)
+        .populate("userId")
+        .populate("queueId");
+      socketIO.emitTicketUpdated(ticket.businessId.toString(), populatedTicket);
+      socketIO.emitTicketCompleted(ticket.businessId.toString(), populatedTicket);
+      // Notify user if they're connected
+      if (ticket.userId) {
+        socketIO.emitToUser(ticket.userId.toString(), "ticketUpdated", { ticket: populatedTicket });
+      }
     }
 
     if (ticket.queueId) {
+      const updatedQueue = await Queue.findById(ticket.queueId);
+      if (updatedQueue && socketIO) {
+        socketIO.emitQueueUpdate(ticket.businessId.toString(), {
+          queueId: updatedQueue._id.toString(),
+          status: updatedQueue.status,
+          currentCount: updatedQueue.currentCount,
+          currentTicketNumber: updatedQueue.currentTicketNumber,
+        });
+      }
       etaCalculator.updateQueueETAs(ticket.queueId);
     }
 
@@ -508,6 +787,15 @@ exports.noShowTicket = async (req, res) => {
     const ticket = await Ticket.findById(req.params.id);
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
+    // Check authorization: business can mark no-show for tickets in their own business
+    if (req.user.role === "business") {
+      if (ticket.businessId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          message: "You can only mark no-show for tickets in your own business",
+        });
+      }
+    }
+
     if (ticket.status !== "waiting")
       return res.status(400).json({
         message: "Only waiting tickets can be marked as no-show",
@@ -517,9 +805,38 @@ exports.noShowTicket = async (req, res) => {
     await ticket.save();
 
     if (ticket.queueId) {
-      await Queue.findByIdAndUpdate(ticket.queueId, {
+      const updatedQueue = await Queue.findByIdAndUpdate(ticket.queueId, {
         $inc: { currentCount: -1 },
-      });
+      }, { new: true });
+
+      // Emit socket events
+      const socketIO = req.app.get("socketIO");
+      if (socketIO) {
+        // Populate ticket before emitting
+        const populatedTicket = await Ticket.findById(ticket._id)
+          .populate("userId")
+          .populate("queueId");
+        socketIO.emitTicketUpdated(ticket.businessId.toString(), populatedTicket);
+        socketIO.emitTicketSkipped(ticket.businessId.toString(), populatedTicket);
+        if (updatedQueue) {
+          socketIO.emitQueueUpdate(ticket.businessId.toString(), {
+            queueId: updatedQueue._id.toString(),
+            status: updatedQueue.status,
+            currentCount: updatedQueue.currentCount,
+            currentTicketNumber: updatedQueue.currentTicketNumber,
+          });
+        }
+      }
+    } else {
+      const socketIO = req.app.get("socketIO");
+      if (socketIO) {
+        // Populate ticket before emitting
+        const populatedTicket = await Ticket.findById(ticket._id)
+          .populate("userId")
+          .populate("queueId");
+        socketIO.emitTicketUpdated(ticket.businessId.toString(), populatedTicket);
+        socketIO.emitTicketSkipped(ticket.businessId.toString(), populatedTicket);
+      }
     }
 
     return res.json({

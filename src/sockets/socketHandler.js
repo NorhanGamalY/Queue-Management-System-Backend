@@ -27,7 +27,7 @@ const socketHandler = (io) => {
       }
 
       // If data is a string, treat it as businessId
-      const businessId = typeof data === 'string' ? data : data.businessId;
+      let businessId = typeof data === 'string' ? data : data.businessId;
       const userId = typeof data === 'object' ? data.userId : null;
       const role = typeof data === 'object' ? data.role : null;
       
@@ -36,8 +36,12 @@ const socketHandler = (io) => {
         return;
       }
 
+      // Ensure businessId is a string
+      businessId = businessId.toString();
+      const room = `business_${businessId}`;
+      
       // Join the business room
-      socket.join(`business_${businessId}`);
+      socket.join(room);
       
       // Track connected user
       connectedUsers.set(socket.id, {
@@ -47,10 +51,11 @@ const socketHandler = (io) => {
         joinedAt: new Date(),
       });
 
-      console.log(`👤 User ${userId || socket.id} joined business room: ${businessId}`);
+      const roomSize = io.sockets.adapter.rooms.get(room)?.size || 0;
+      console.log(`👤 User ${userId || socket.id} joined business room: ${room} (Room size: ${roomSize})`);
 
       // Notify room about new connection
-      socket.to(`business_${businessId}`).emit("userJoined", {
+      socket.to(room).emit("userJoined", {
         userId,
         role,
         timestamp: new Date(),
@@ -60,6 +65,8 @@ const socketHandler = (io) => {
       socket.emit("joinedBusiness", {
         success: true,
         businessId,
+        room,
+        roomSize,
         message: `Successfully joined business ${businessId}`,
       });
     });
@@ -331,7 +338,8 @@ const socketHandler = (io) => {
     // JOIN USER'S PERSONAL ROOM (for notifications)
     // =========================================
     socket.on("joinUserRoom", (data) => {
-      const { userId } = data;
+      // Handle case where data might be a string (userId) or an object
+      const userId = typeof data === 'string' ? data : (data?.userId || data);
       
       if (!userId) {
         socket.emit("error", { message: "userId is required" });
@@ -388,11 +396,20 @@ const socketHandler = (io) => {
   return {
     // Server → ticketCreated
     emitTicketCreated: (businessId, ticket) => {
-      io.to(`business_${businessId}`).emit("ticketCreated", {
+      const businessIdStr = businessId.toString();
+      const room = `business_${businessIdStr}`;
+      
+      io.to(room).emit("ticketCreated", {
         ticket,
         timestamp: new Date(),
       });
-      console.log(`📤 Emitted ticketCreated to business ${businessId}`);
+      
+      console.log(`📤 Emitted ticketCreated to room ${room}`, {
+        businessId: businessIdStr,
+        ticketId: ticket?._id,
+        ticketNumber: ticket?.ticketNumber,
+        roomSize: io.sockets.adapter.rooms.get(room)?.size || 0
+      });
     },
 
     // Server → ticketUpdated
@@ -423,13 +440,49 @@ const socketHandler = (io) => {
       console.log(`📤 Emitted ticketCalled to business ${businessId}`);
     },
 
+    // Emit ticket skipped
+    emitTicketSkipped: (businessId, ticket) => {
+      io.to(`business_${businessId}`).emit("ticketSkipped", {
+        ticket,
+        timestamp: new Date(),
+      });
+      console.log(`📤 Emitted ticketSkipped to business ${businessId}`);
+    },
+
+    // Emit ticket cancelled
+    emitTicketCancelled: (businessId, ticket) => {
+      io.to(`business_${businessId}`).emit("ticketCancelled", {
+        ticket,
+        timestamp: new Date(),
+      });
+      console.log(`📤 Emitted ticketCancelled to business ${businessId}`);
+    },
+
+    // Emit ticket completed
+    emitTicketCompleted: (businessId, ticket) => {
+      io.to(`business_${businessId}`).emit("ticketCompleted", {
+        ticket,
+        timestamp: new Date(),
+      });
+      console.log(`📤 Emitted ticketCompleted to business ${businessId}`);
+    },
+
     // Emit queue status update
     emitQueueUpdate: (businessId, queueData) => {
-      io.to(`business_${businessId}`).emit("queueUpdated", {
+      const businessIdStr = businessId.toString();
+      const room = `business_${businessIdStr}`;
+      
+      io.to(room).emit("queueUpdated", {
+        businessId: businessIdStr,
         queue: queueData,
         timestamp: new Date(),
       });
-      console.log(`📤 Emitted queueUpdated to business ${businessId}`);
+      
+      console.log(`📤 Emitted queueUpdated to room ${room}`, {
+        businessId: businessIdStr,
+        queueData,
+        roomSize: io.sockets.adapter.rooms.get(room)?.size || 0
+      });
     },
 
     // Emit notification to specific user

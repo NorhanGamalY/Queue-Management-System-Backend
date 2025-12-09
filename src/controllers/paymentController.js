@@ -1,6 +1,10 @@
 const Payment = require("../models/paymentSchema");
 const Ticket = require("../models/ticketSchema");
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY || "sk_test_dummy_key");
+const Business = require("../models/businessSchema");
+const Queue = require("../models/queueSchema");
+const stripe = require("stripe")(
+  process.env.STRIPE_SECRET_KEY || "sk_test_dummy_key"
+);
 
 // -------------------------
 // POST /api/v1/payments
@@ -35,7 +39,9 @@ exports.createPayment = async (req, res) => {
     }
 
     let stripePaymentIntent = null;
-    let transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    let transactionId = `TXN-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
 
     // If using Stripe (card payment)
     if (paymentMethod === "card" && paymentMethodId) {
@@ -93,6 +99,146 @@ exports.createPayment = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error creating payment",
+    });
+  }
+};
+
+// -------------------------
+// POST /api/v1/payments/checkout/card
+// Card checkout without ticket; creates ticket after success
+// -------------------------
+exports.checkoutCardAndCreateTicket = async (req, res) => {
+  try {
+    const { businessId, queueId, amount, paymentMethodId, type, priority } =
+      req.body;
+
+    if (!businessId || !queueId || !amount || !paymentMethodId) {
+      return res.status(400).json({
+        success: false,
+        message: "businessId, queueId, amount, paymentMethodId are required",
+      });
+    }
+
+    // Validate business and queue
+    const business = await Business.findById(businessId);
+    if (!business)
+      return res
+        .status(404)
+        .json({ success: false, message: "Business not found" });
+    if (business.status !== "active")
+      return res
+        .status(400)
+        .json({ success: false, message: "Business is closed" });
+
+    const queue = await Queue.findById(queueId);
+    if (!queue)
+      return res
+        .status(404)
+        .json({ success: false, message: "Queue not found" });
+    if (queue.businessId.toString() !== businessId)
+      return res.status(400).json({
+        success: false,
+        message: "Queue does not belong to this business",
+      });
+    if (queue.status !== "active")
+      return res
+        .status(400)
+        .json({ success: false, message: "Queue not accepting tickets" });
+
+    // Create and confirm Stripe Payment Intent
+    let stripePaymentIntent;
+    try {
+      stripePaymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(Number(amount) * 100),
+        currency: process.env.PAYMENT_CURRENCY || "usd",
+        payment_method: paymentMethodId,
+        confirm: true,
+        automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+        payment_method_types: ["card"],
+        metadata: {
+          userId: req.user.id,
+          businessId,
+          queueId,
+          type: type || "examination",
+          priority: priority || "normal",
+        },
+      });
+    } catch (stripeError) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment failed: " + stripeError.message,
+      });
+    }
+
+    const transactionId = stripePaymentIntent.id;
+
+    // Attempt to allocate a ticket atomically
+    const updatedQueue = await Queue.findOneAndUpdate(
+      {
+        _id: queueId,
+        currentCount: { $lt: queue.maxCapacity },
+        status: "active",
+      },
+      { $inc: { currentCount: 1, currentTicketNumber: 1 } },
+      { new: true }
+    );
+
+    if (!updatedQueue) {
+      // Refund since no capacity
+      try {
+        await stripe.refunds.create({
+          payment_intent: stripePaymentIntent.id,
+          amount: Math.round(Number(amount) * 100),
+        });
+      } catch (refundErr) {
+        // log but continue
+        console.error("Stripe refund failed:", refundErr.message);
+      }
+      return res
+        .status(400)
+        .json({ success: false, message: "Queue is full. Refunded payment." });
+    }
+
+    // Create ticket
+    const ticket = await Ticket.create({
+      businessId,
+      userId: req.user.id,
+      queueId,
+      ticketNumber: updatedQueue.currentTicketNumber,
+      type: type || "examination",
+      status: "waiting",
+      priority: priority || "normal",
+      paymentStatus: "paid",
+    });
+
+    // Link user to business clients list
+    await Business.findByIdAndUpdate(businessId, {
+      $addToSet: { ourClients: req.user.id },
+    });
+
+    // Create payment record linked to ticket
+    const payment = await Payment.create({
+      userId: req.user.id,
+      ticketId: ticket._id,
+      businessId,
+      amount,
+      paymentMethod: "card",
+      status: "completed",
+      transactionId,
+      stripePaymentIntentId: stripePaymentIntent.id,
+      paidAt: new Date(),
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Payment succeeded and ticket created",
+      data: { ticket, payment },
+    });
+  } catch (error) {
+    console.error("checkoutCardAndCreateTicket error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error processing card checkout",
     });
   }
 };
@@ -452,43 +598,43 @@ exports.stripeWebhook = async (req, res) => {
     switch (event.type) {
       case "payment_intent.succeeded":
         const paymentIntent = event.data.object;
-        
+
         // Update payment status in database
         await Payment.findOneAndUpdate(
           { stripePaymentIntentId: paymentIntent.id },
-          { 
+          {
             status: "completed",
             paidAt: new Date(),
           }
         );
-        
+
         console.log("Payment succeeded:", paymentIntent.id);
         break;
 
       case "payment_intent.payment_failed":
         const failedPayment = event.data.object;
-        
+
         // Update payment status to failed
         await Payment.findOneAndUpdate(
           { stripePaymentIntentId: failedPayment.id },
           { status: "failed" }
         );
-        
+
         console.log("Payment failed:", failedPayment.id);
         break;
 
       case "charge.refunded":
         const refund = event.data.object;
-        
+
         // Update payment status to refunded
         await Payment.findOneAndUpdate(
           { stripePaymentIntentId: refund.payment_intent },
-          { 
+          {
             status: "refunded",
             refundDate: new Date(),
           }
         );
-        
+
         console.log("Charge refunded:", refund.id);
         break;
 
